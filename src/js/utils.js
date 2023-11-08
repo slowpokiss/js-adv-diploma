@@ -1,0 +1,77 @@
+export function calcTileType(index, boardSize) {
+  if (index === 0) {
+    return "top-left";
+  } else if (index === boardSize - 1) {
+    return "top-right";
+  } else if (boardSize * boardSize - index === boardSize) {
+    return "bottom-left";
+  } else if (index === boardSize * boardSize - 1) {
+    return "bottom-right";
+  } else if (boardSize * boardSize - index < boardSize) {
+    return "bottom";
+  } else if (index % boardSize === 0) {
+    return "left";
+  } else if (index % boardSize === boardSize - 1) {
+    return "right";
+  } else if (index < boardSize) {
+    return "top";
+  }
+
+  return "center";
+}
+
+export function getPossibleArea(characterType, index) {
+  //const goodPers = ["Bowman", "Swordsman", "Magician"];
+  const boardSize = 8;
+  let oneCellArea = [
+    index - boardSize - 1,
+    index - 1,
+    index + boardSize - 1,
+    index - boardSize,
+    index + boardSize,
+    index - boardSize + 1,
+    index + 1,
+    index + boardSize + 1,
+  ];
+
+  let twoCellArea = [
+    index - 2 * boardSize - 2,
+    index + 2 * boardSize - 2,
+    index - 2 * boardSize + 2,
+    index + 2 * boardSize + 2,
+  ];
+
+  const cellPosition = calcTileType(index, 8);
+  calcTileType(oneCellArea[1], 8).includes("left") ||
+  cellPosition.includes("left")
+    ? (twoCellArea = twoCellArea.slice(2))
+    : 0;
+  calcTileType(oneCellArea.at(-2), 8).includes("right") ||
+  cellPosition.includes("right")
+    ? (twoCellArea = twoCellArea.slice(0, -2))
+    : 0;
+
+  console.log(oneCellArea.at(-2));
+
+  cellPosition.includes("left") ? (oneCellArea = oneCellArea.slice(3)) : 0;
+  cellPosition.includes("right") ? (oneCellArea = oneCellArea.slice(0, -3)) : 0;
+
+  if (characterType === "Magician") {
+    return oneCellArea;
+  }
+  if (characterType === "Bowman") {
+    return [...oneCellArea, ...twoCellArea];
+  }
+}
+
+export function calcHealthLevel(health) {
+  if (health < 15) {
+    return "critical";
+  }
+
+  if (health < 50) {
+    return "normal";
+  }
+
+  return "high";
+}
