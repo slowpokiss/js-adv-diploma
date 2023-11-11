@@ -94,39 +94,52 @@ export default class GameController {
   }
 
   onCellClick(index) {
-    this.currcell >= 0 ? this.gamePlay.deselectCell(this.currcell) : 0;
-
-    const pers = this.getCharacter(index);
-    const goodPers = ["Bowman", "Swordsman", "Magician"];
-    if (pers && goodPers.includes(pers.character.type)) {
-      this.gamePlay.selectCell(index);
-      this.currcell = index;
-
-      const result = getPossibleArea(pers.character.type, index);
-      this.checkPossibleArea(result);
+    if (this.currCell >= 0) {
+      this.gamePlay.deselectCell(this.currCell);
+      this.gamePlay.deAreaCell();
     }
 
-    //console.log()
+    let pers = this.getCharacter(index);
+    const goodPers = ["Bowman", "Swordsman", "Magician"];
+
+    if (pers && goodPers.includes(pers.character.type)) {
+      this.gamePlay.selectCell(index);
+      this.currCell = index;
+      this.checkPossibleArea(pers.character.type, index);
+    }
+
+    if (this.CharacterAreaArr && this.CharacterAreaArr.includes(index)) {
+      const char = this.characterPositions.find(
+        (el) => el.position === this.currCell,
+      );
+      char ? (char.position = index) : 0;
+      this.gamePlay.redrawPositions(this.characterPositions);
+    }
+
     // if (pers && !goodPers.includes(pers.character.type)) {
     //   GamePlay.showError("Это противник!");
     // }
   }
 
-  checkPossibleArea(arr) {
+  checkPossibleArea(pers, index) {
+    this.CharacterAreaArr = getPossibleArea(pers, index);
     const chrPositions = [];
     this.characterPositions.forEach((el) => {
       chrPositions.push(el.position);
     });
 
-    arr = arr.filter((el) => {
+    this.CharacterAreaArr = this.CharacterAreaArr.filter((el) => {
+      if (chrPositions.includes(el) && [this.CharacterAreaArr[0], this.CharacterAreaArr[2], this.CharacterAreaArr[5],this.CharacterAreaArr[7]].includes(el) && (el >= 0 && el <= 63)) {
+        console.log(el);
+      }
+
       return !chrPositions.includes(el) && el >= 0 && el <= 63;
     });
-
-    this.drawPossibleArea(arr);
+    this.drawPossibleArea(this.CharacterAreaArr);
+    return this.CharacterAreaArr;
   }
 
   drawPossibleArea(arr) {
-    console.log(arr);
     arr.forEach((el) => {
       this.gamePlay.areaCell(el);
     });
@@ -134,19 +147,27 @@ export default class GameController {
 
   onCellEnter(index) {
     const pers = this.getCharacter(index);
-
     if (pers) {
+      ["Bowman", "Swordsman", "Magician"].includes(pers.character.type)
+        ? this.gamePlay.setCursor("pointer")
+        : this.gamePlay.setCursor("not-allowed");
       this.gamePlay.showCellTooltip(
         `\u{1F396}${pers.character.level} \u2694${pers.character.attack} \u{1F6E1}${pers.character.defence} \u2764${pers.character.health}`,
         index,
       );
     }
+
+    const cell = [...this.gamePlay.cells.at(index).children][0];
+    if (cell) {
+      cell.classList[0] === "selected-cell"
+        ? this.gamePlay.setCursor("pointer")
+        : 0;
+    }
   }
 
   onCellLeave(index) {
+    this.gamePlay.setCursor("auto");
     const pers = this.characterPositions.find((el) => el.position === index);
-    if (pers) {
-      this.gamePlay.hideCellTooltip(index);
-    }
+    pers ? this.gamePlay.hideCellTooltip(index) : 0;
   }
 }

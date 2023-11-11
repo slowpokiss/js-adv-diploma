@@ -16,7 +16,6 @@ export function calcTileType(index, boardSize) {
   } else if (index < boardSize) {
     return "top";
   }
-
   return "center";
 }
 
@@ -51,8 +50,6 @@ export function getPossibleArea(characterType, index) {
     ? (twoCellArea = twoCellArea.slice(0, -2))
     : 0;
 
-  console.log(oneCellArea.at(-2));
-
   cellPosition.includes("left") ? (oneCellArea = oneCellArea.slice(3)) : 0;
   cellPosition.includes("right") ? (oneCellArea = oneCellArea.slice(0, -3)) : 0;
 
@@ -62,6 +59,8 @@ export function getPossibleArea(characterType, index) {
   if (characterType === "Bowman") {
     return [...oneCellArea, ...twoCellArea];
   }
+  
+  return oneCellArea;
 }
 
 export function calcHealthLevel(health) {

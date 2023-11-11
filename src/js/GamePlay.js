@@ -157,15 +157,26 @@ export default class GamePlay {
     alert(message);
   }
 
-  selectCell(index, color = "yellow") {
-    this.deselectCell(index);
-    this.cells[index].classList.add("selected", `selected-${color}`);
-  }
-
   areaCell(index) {
     const areaEl = document.createElement("div");
     areaEl.classList.add("selected-cell");
     this.cells[index].appendChild(areaEl);
+  }
+
+  deAreaCell() {
+    this.cells.forEach((el) => {
+      if (el.children[0] !== undefined) {
+        const cell = el.children[0];
+        if ([...cell.classList].includes("selected-cell")) {
+          cell.remove();
+        }
+      }
+    });
+  }
+
+  selectCell(index, color = "yellow") {
+    this.deselectCell(index);
+    this.cells[index].classList.add("selected", `selected-${color}`);
   }
 
   deselectCell(index) {
