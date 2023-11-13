@@ -59,8 +59,60 @@ export function getPossibleArea(characterType, index) {
   if (characterType === "Bowman") {
     return [...oneCellArea, ...twoCellArea];
   }
-  
+
   return oneCellArea;
+}
+
+export function getPossibleAtacks(character, index) {
+  const goodPers = ["Bowman", "Swordsman", "Magician"];
+  let n = 1;
+  const boardSize = 8;
+  let masAttacks = [];
+  const checkMas = [];
+  
+  if (character === "Swordsman") {
+    n = 1;
+  } if (character === "Bowman") {
+    n = 2;
+  }
+  const startCell = index - n * boardSize - n;
+
+
+  for (let j = startCell; j < startCell + 2*n + 1; j++) {
+    const ms = [];
+    for (let i = j; i < j + (2*n + 1) * boardSize; i += boardSize) {
+      ms.push(i);
+    }
+    masAttacks.push(ms)
+  }
+
+  
+  for (let i = 0; i < Math.floor(masAttacks.length / 2) + 1;) {
+    if (calcTileType(masAttacks[i][n], boardSize) === 'left') {
+      masAttacks = masAttacks.slice(i);
+      break;
+    } else {
+      i++;
+    }
+  }
+
+
+  masAttacks = masAttacks.map(el => {
+    return el.filter((elem) => {
+      return (elem >= 0 && elem <= 63 && elem !== index);
+    });
+  });
+
+  return masAttacks
+  // this.characterPositions.forEach((el) => {
+  //   if (this.CharacterAreaArr.includes(el.position) && !goodPers.includes(el.character.type)) {
+  //     this.chrAtacks.push(el.position);
+  //     console.log(el)
+  //   }
+  //   chrPositions.push(el.position);
+  // });
+
+  // this.chrAtacks.forEach(el => this.gamePlay.selectCell(el, 'red'));
 }
 
 export function calcHealthLevel(health) {

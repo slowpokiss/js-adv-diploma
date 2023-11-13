@@ -8,6 +8,7 @@ import Daemon from "./characters/Daemon";
 import PositionedCharacter from "./PositionedCharacter";
 import { generateTeam } from "./generators";
 import { getPossibleArea } from "./utils";
+import { getPossibleAtacks } from "./utils";
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -97,6 +98,7 @@ export default class GameController {
     if (this.currCell >= 0) {
       this.gamePlay.deselectCell(this.currCell);
       this.gamePlay.deAreaCell();
+     // this.chrAtacks.forEach(el => this.gamePlay.deselectCell(el));
     }
 
     let pers = this.getCharacter(index);
@@ -124,17 +126,15 @@ export default class GameController {
   checkPossibleArea(pers, index) {
     this.CharacterAreaArr = getPossibleArea(pers, index);
     const chrPositions = [];
-    this.characterPositions.forEach((el) => {
-      chrPositions.push(el.position);
-    });
+    //const goodPers = ["Bowman", "Swordsman", "Magician"];
+
+    this.characterPositions.forEach((el) => chrPositions.push(el.position));
+    console.log(getPossibleAtacks(pers, index))
 
     this.CharacterAreaArr = this.CharacterAreaArr.filter((el) => {
-      if (chrPositions.includes(el) && [this.CharacterAreaArr[0], this.CharacterAreaArr[2], this.CharacterAreaArr[5],this.CharacterAreaArr[7]].includes(el) && (el >= 0 && el <= 63)) {
-        console.log(el);
-      }
-
       return !chrPositions.includes(el) && el >= 0 && el <= 63;
     });
+
     this.drawPossibleArea(this.CharacterAreaArr);
     return this.CharacterAreaArr;
   }
@@ -159,9 +159,7 @@ export default class GameController {
 
     const cell = [...this.gamePlay.cells.at(index).children][0];
     if (cell) {
-      cell.classList[0] === "selected-cell"
-        ? this.gamePlay.setCursor("pointer")
-        : 0;
+      cell.classList[0] === "selected-cell"? this.gamePlay.setCursor("pointer"): 0;
     }
   }
 
