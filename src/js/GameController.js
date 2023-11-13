@@ -98,7 +98,6 @@ export default class GameController {
     if (this.currCell >= 0) {
       this.gamePlay.deselectCell(this.currCell);
       this.gamePlay.deAreaCell();
-     // this.chrAtacks.forEach(el => this.gamePlay.deselectCell(el));
     }
 
     let pers = this.getCharacter(index);
@@ -129,7 +128,7 @@ export default class GameController {
     //const goodPers = ["Bowman", "Swordsman", "Magician"];
 
     this.characterPositions.forEach((el) => chrPositions.push(el.position));
-    console.log(getPossibleAtacks(pers, index))
+    console.log(getPossibleAtacks(pers, index));
 
     this.CharacterAreaArr = this.CharacterAreaArr.filter((el) => {
       return !chrPositions.includes(el) && el >= 0 && el <= 63;
@@ -159,7 +158,9 @@ export default class GameController {
 
     const cell = [...this.gamePlay.cells.at(index).children][0];
     if (cell) {
-      cell.classList[0] === "selected-cell"? this.gamePlay.setCursor("pointer"): 0;
+      cell.classList[0] === "selected-cell"
+        ? this.gamePlay.setCursor("pointer")
+        : 0;
     }
   }
 
