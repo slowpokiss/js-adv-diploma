@@ -98,6 +98,8 @@ export default class GameController {
     if (this.currCell >= 0) {
       this.gamePlay.deselectCell(this.currCell);
       this.gamePlay.deAreaCell();
+      this.chrAtacks.forEach((el) => this.gamePlay.deselectCell(el.position));
+      this.chrAtacks = [];
     }
 
     let pers = this.getCharacter(index);
@@ -124,14 +126,24 @@ export default class GameController {
 
   checkPossibleArea(pers, index) {
     this.CharacterAreaArr = getPossibleArea(pers, index);
-    const chrPositions = [];
-    //const goodPers = ["Bowman", "Swordsman", "Magician"];
+    const chrCells = [];
+    const goodPers = ["Bowman", "Swordsman", "Magician"];
+    const chrRadius = getPossibleAtacks(pers, index);
+    this.chrAtacks = [];
 
-    this.characterPositions.forEach((el) => chrPositions.push(el.position));
-    console.log(getPossibleAtacks(pers, index));
+    this.characterPositions.forEach((el) => {
+      if (
+        !goodPers.includes(el.character.type) &&
+        chrRadius.includes(el.position)
+      ) {
+        this.gamePlay.selectCell(el.position, "red");
+        this.chrAtacks.push(el);
+      }
+      chrCells.push(el.position);
+    });
 
     this.CharacterAreaArr = this.CharacterAreaArr.filter((el) => {
-      return !chrPositions.includes(el) && el >= 0 && el <= 63;
+      return !chrCells.includes(el);
     });
 
     this.drawPossibleArea(this.CharacterAreaArr);
@@ -161,6 +173,14 @@ export default class GameController {
       cell.classList[0] === "selected-cell"
         ? this.gamePlay.setCursor("pointer")
         : 0;
+    }
+
+    if (this.chrAtacks) {
+      this.chrAtacks.forEach((el) => {
+        if (el.position === index) {
+          this.gamePlay.setCursor("pointer");
+        }
+      });
     }
   }
 
