@@ -98,7 +98,7 @@ function getVector(cell, index) {
   return result;
 }
 
-export function getPossibleAtacks(character, index) {
+export function getPossibleAttacks(character, index) {
   let n = 1;
   const boardSize = 8;
   let masAttacks = [];
@@ -166,4 +166,8 @@ function getRadius(cell, index) {
   }
 
   return result;
+}
+
+export function getAttackPower(attacker, target) {
+  return Math.max(attacker.attack - target.defence, attacker.attack * 0.1);
 }

@@ -6,9 +6,11 @@ import Vampire from "./characters/Vampire";
 import Undead from "./characters/Undead";
 import Daemon from "./characters/Daemon";
 import PositionedCharacter from "./PositionedCharacter";
+import themes from "./themes";
 import { generateTeam } from "./generators";
 import { getPossibleArea } from "./utils";
-import { getPossibleAtacks } from "./utils";
+import { getPossibleAttacks } from "./utils";
+import { getAttackPower } from "./utils";
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -18,11 +20,18 @@ export default class GameController {
     this.onCellEnter = this.onCellEnter.bind(this);
     this.onCellLeave = this.onCellLeave.bind(this);
     this.onCellClick = this.onCellClick.bind(this);
+    this.themesCount = 0;
+    this.addEvents();
   }
 
   init() {
-    this.gamePlay.drawUi("prairie");
-    this.addEvents();
+    this.CharacterAreaArr = [];
+    this.chrAtacks = [];
+    this.characterPositions = [];
+    this.clearSelections();
+    this.gamePlay.drawUi(
+      Object.values(themes)[this.themesCount % Object.keys(themes).length],
+    );
     this.drawCharacters();
   }
 
@@ -69,24 +78,24 @@ export default class GameController {
     }
 
     this.characterPositions = [];
-    const playerTypes = [Bowman, Swordsman, Magician];
-    this.playerTeam = generateTeam(playerTypes, 5, 5);
+    //const playerTypes = [Bowman, Swordsman, Magician];
+    const playerTypes = [Swordsman];
+    const playerTeam = generateTeam(playerTypes, 5, 5);
     const plrGen = generatePositions("team");
-    this.playerTeam.teamFolder.forEach((el) => {
+    playerTeam.teamFolder.forEach((el) => {
       this.characterPositions.push(
         new PositionedCharacter(el, plrGen.next().value),
       );
     });
 
     const enemyTypes = [Vampire, Undead, Daemon];
-    this.enemyTeam = generateTeam(enemyTypes, 5, 5);
+    const enemyTeam = generateTeam(enemyTypes, 5, 5);
     const enemGen = generatePositions("enemy");
-    this.enemyTeam.teamFolder.forEach((el) => {
+    enemyTeam.teamFolder.forEach((el) => {
       this.characterPositions.push(
         new PositionedCharacter(el, enemGen.next().value),
       );
     });
-
     this.gamePlay.redrawPositions(this.characterPositions);
   }
 
@@ -94,29 +103,57 @@ export default class GameController {
     return this.characterPositions.find((el) => el.position === index);
   }
 
-  onCellClick(index) {
-    if (this.currCell >= 0) {
+  clearSelections() {
+    if (this.currCell) {
       this.gamePlay.deselectCell(this.currCell);
-      this.gamePlay.deAreaCell();
-      this.chrAtacks.forEach((el) => this.gamePlay.deselectCell(el.position));
-      this.chrAtacks = [];
     }
+    this.gamePlay.cells.forEach((el, ind) => this.gamePlay.deselectCell(ind));
+    this.gamePlay.deAreaCell();
+    if (this.chrAtacks) {
+      this.chrAtacks.forEach((el) => this.gamePlay.deselectCell(el.position));
+    }
+    this.currCell = undefined;
+    this.CharacterAreaArr = [];
+    this.chrAtacks = [];
+  }
 
+  onCellClick(index) {
     let pers = this.getCharacter(index);
     const goodPers = ["Bowman", "Swordsman", "Magician"];
 
+    // постороняя клетка
+    if (
+      !pers &&
+      !this.chrAtacks.includes(index) &&
+      !this.CharacterAreaArr.includes(index)
+    ) {
+      this.clearSelections();
+      return;
+    }
+
+    // проверка атаки
+    if (this.chrAtacks && this.chrAtacks.some((el) => el.position === index)) {
+      this.attackLogic(this.getCharacter(this.currCell), pers);
+      this.clearSelections();
+    }
+    // проверка перехода персонажа
+    if (this.CharacterAreaArr && this.CharacterAreaArr.includes(index)) {
+      const char = this.getCharacter(this.currCell);
+      if (pers && this.currCell) {
+        this.clearSelections();
+        return;
+      }
+      char ? (char.position = index) : 0;
+      this.gamePlay.redrawPositions(this.characterPositions);
+      this.clearSelections();
+    }
+
+    // проверка выбора персонажа
+    this.clearSelections();
     if (pers && goodPers.includes(pers.character.type)) {
       this.gamePlay.selectCell(index);
       this.currCell = index;
       this.checkPossibleArea(pers.character.type, index);
-    }
-
-    if (this.CharacterAreaArr && this.CharacterAreaArr.includes(index)) {
-      const char = this.characterPositions.find(
-        (el) => el.position === this.currCell,
-      );
-      char ? (char.position = index) : 0;
-      this.gamePlay.redrawPositions(this.characterPositions);
     }
 
     // if (pers && !goodPers.includes(pers.character.type)) {
@@ -128,7 +165,7 @@ export default class GameController {
     this.CharacterAreaArr = getPossibleArea(pers, index);
     const chrCells = [];
     const goodPers = ["Bowman", "Swordsman", "Magician"];
-    const chrRadius = getPossibleAtacks(pers, index);
+    const chrRadius = getPossibleAttacks(pers, index);
     this.chrAtacks = [];
 
     this.characterPositions.forEach((el) => {
@@ -155,6 +192,30 @@ export default class GameController {
       this.gamePlay.areaCell(el);
     });
   }
+
+  attackLogic(pers, enemy) {
+    const goodPers = ["Bowman", "Swordsman", "Magician"];
+    const damage = getAttackPower(pers.character, enemy.character);
+    enemy.character.health = enemy.character.health - damage;
+    if (enemy.character.health <= 0) {
+      this.characterPositions = this.characterPositions.filter(
+        (el) => el !== enemy,
+      );
+      if (
+        !this.characterPositions.some(
+          (el) => !goodPers.includes(el.character.type),
+        )
+      ) {
+        this.themesCount += 1;
+        this.init();
+      }
+    }
+    this.gamePlay.showDamage(enemy.position, damage).then((data) => {
+      this.gamePlay.redrawPositions(this.characterPositions);
+    });
+  }
+
+  levelUpLogic() {}
 
   onCellEnter(index) {
     const pers = this.getCharacter(index);
