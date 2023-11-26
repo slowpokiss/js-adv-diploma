@@ -56,10 +56,10 @@ export default class GameController {
 
   drawCharacters(lvl, count) {
     if (this.themesCount === 0) {
-      //const playerTypes = [Bowman, Swordsman, Magician];
-      const playerTypes = [Swordsman];
+      const playerTypes = [Bowman, Swordsman, Magician];
+      //const playerTypes = [Swordsman];
 
-      const playerTeam = generateTeam(playerTypes, 5, 1);
+      const playerTeam = generateTeam(playerTypes, 5, 5);
       const plrGen = generatePositions("team");
       playerTeam.teamFolder.forEach((el) => {
         this.characterPositions.push(
