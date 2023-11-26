@@ -21,15 +21,16 @@ export function calcTileType(index, boardSize) {
 
 export function getPossibleArea(characterType, index) {
   const goodPers = ["Bowman", "Swordsman", "Magician"];
+  const badPers = ["Daemon", "Vampire", "Undead"];
   let ni;
   const boardSize = 8;
-  if (characterType === "Magician") {
+  if (characterType === "Magician" || characterType === "Daemon") {
     ni = 1;
   }
-  if (characterType === "Bowman") {
+  if (characterType === "Bowman" || characterType === "Vampire") {
     ni = 2;
   }
-  if (characterType === "Swordsman") {
+  if (characterType === "Swordsman" || characterType === "Undead") {
     ni = 4;
   }
 
@@ -103,10 +104,10 @@ export function getPossibleAttacks(character, index) {
   const boardSize = 8;
   let masAttacks = [];
 
-  if (character === "Bowman") {
+  if (character === "Bowman" || character === "Vampire") {
     n = 2;
   }
-  if (character === "Magician") {
+  if (character === "Magician" || character === "Daemon") {
     n = 4;
   }
 
@@ -170,4 +171,39 @@ function getRadius(cell, index) {
 
 export function getAttackPower(attacker, target) {
   return Math.max(attacker.attack - target.defence, attacker.attack * 0.1);
+}
+
+export function* generatePositions(type) {
+  let col1, col2;
+
+  if (type === "team") {
+    col1 = 0;
+    col2 = 1;
+  }
+  if (type === "enemy") {
+    col1 = 6;
+    col2 = 7;
+  }
+
+  const randSet = new Set();
+  while (true) {
+    const randomColumn = Math.floor(Math.random() * 2);
+    let randN;
+
+    if (randomColumn % 2 === 0) {
+      randN = Math.floor(Math.random() * 7) * 8 + col1;
+    } else {
+      randN = Math.floor(Math.random() * 7) * 8 + col2;
+    }
+
+    while (randSet.has(randN)) {
+      if (randomColumn % 2 === 0) {
+        randN = Math.floor(Math.random() * 7) * 8 + col1;
+      } else {
+        randN = Math.floor(Math.random() * 7) * 8 + col2;
+      }
+    }
+    randSet.add(randN);
+    yield randN;
+  }
 }

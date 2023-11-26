@@ -1,4 +1,4 @@
-import { getPossibleAtacks } from "../js/utils";
+import { getPossibleAttacks } from "../js/utils";
 
 test.each([
   [
@@ -20,5 +20,5 @@ test.each([
     ],
   ],
 ])("calculating position (%i, %i)", (character, index, expected) => {
-  expect(getPossibleAtacks(character, index)).toEqual(expected);
+  expect(getPossibleAttacks(character, index)).toEqual(expected);
 });

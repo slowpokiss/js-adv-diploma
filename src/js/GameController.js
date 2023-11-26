@@ -1,4 +1,5 @@
 import GamePlay from "./GamePlay";
+import GameState from "./GameState";
 import Bowman from "./characters/Bowman";
 import Swordsman from "./characters/Swordsman";
 import Magician from "./characters/Magician";
@@ -11,6 +12,7 @@ import { generateTeam } from "./generators";
 import { getPossibleArea } from "./utils";
 import { getPossibleAttacks } from "./utils";
 import { getAttackPower } from "./utils";
+import { generatePositions } from "./utils";
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -20,76 +22,53 @@ export default class GameController {
     this.onCellEnter = this.onCellEnter.bind(this);
     this.onCellLeave = this.onCellLeave.bind(this);
     this.onCellClick = this.onCellClick.bind(this);
+    this.onNewGameClick = this.onNewGameClick.bind(this);
+    this.onSaveGameClick = this.onSaveGameClick.bind(this);
+    this.onLoadGameClick = this.onLoadGameClick.bind(this);
     this.themesCount = 0;
+    this.characterPositions = [];
     this.addEvents();
   }
 
   init() {
     this.CharacterAreaArr = [];
     this.chrAtacks = [];
-    this.characterPositions = [];
     this.clearSelections();
     this.gamePlay.drawUi(
       Object.values(themes)[this.themesCount % Object.keys(themes).length],
     );
-    this.drawCharacters();
+    this.drawCharacters(
+      this.themesCount + 3,
+      this.themesCount + 3 > this.gamePlay.boardSize * 2
+        ? this.gamePlay.boardSize * 2
+        : this.themesCount + 3,
+    );
   }
 
   addEvents() {
     this.gamePlay.addCellEnterListener(this.onCellEnter);
     this.gamePlay.addCellLeaveListener(this.onCellLeave);
     this.gamePlay.addCellClickListener(this.onCellClick);
+    this.gamePlay.addNewGameListener(this.onNewGameClick);
+    this.gamePlay.addSaveGameListener(this.onSaveGameClick);
+    this.gamePlay.addLoadGameListener(this.onLoadGameClick);
   }
 
-  drawCharacters() {
-    function* generatePositions(type) {
-      let col1, col2;
+  drawCharacters(lvl, count) {
+    if (this.themesCount === 0) {
+      //const playerTypes = [Bowman, Swordsman, Magician];
+      const playerTypes = [Swordsman];
 
-      if (type === "team") {
-        col1 = 0;
-        col2 = 1;
-      }
-      if (type === "enemy") {
-        col1 = 6;
-        col2 = 7;
-      }
-
-      const randSet = new Set();
-      while (true) {
-        const randomColumn = Math.floor(Math.random() * 2);
-        let randN;
-
-        if (randomColumn % 2 === 0) {
-          randN = Math.floor(Math.random() * 7) * 8 + col1;
-        } else {
-          randN = Math.floor(Math.random() * 7) * 8 + col2;
-        }
-
-        while (randSet.has(randN)) {
-          if (randomColumn % 2 === 0) {
-            randN = Math.floor(Math.random() * 7) * 8 + col1;
-          } else {
-            randN = Math.floor(Math.random() * 7) * 8 + col2;
-          }
-        }
-        randSet.add(randN);
-        yield randN;
-      }
+      const playerTeam = generateTeam(playerTypes, 5, 1);
+      const plrGen = generatePositions("team");
+      playerTeam.teamFolder.forEach((el) => {
+        this.characterPositions.push(
+          new PositionedCharacter(el, plrGen.next().value),
+        );
+      });
     }
-
-    this.characterPositions = [];
-    //const playerTypes = [Bowman, Swordsman, Magician];
-    const playerTypes = [Swordsman];
-    const playerTeam = generateTeam(playerTypes, 5, 5);
-    const plrGen = generatePositions("team");
-    playerTeam.teamFolder.forEach((el) => {
-      this.characterPositions.push(
-        new PositionedCharacter(el, plrGen.next().value),
-      );
-    });
-
     const enemyTypes = [Vampire, Undead, Daemon];
-    const enemyTeam = generateTeam(enemyTypes, 5, 5);
+    const enemyTeam = generateTeam(enemyTypes, lvl, count);
     const enemGen = generatePositions("enemy");
     enemyTeam.teamFolder.forEach((el) => {
       this.characterPositions.push(
@@ -117,6 +96,56 @@ export default class GameController {
     this.chrAtacks = [];
   }
 
+  turn() {
+    return new Promise((resolve) => {
+      // атакуют первого самого сильно персонажа
+
+      const arrPersPos = [];
+      this.characterPositions.forEach((el) => arrPersPos.push(el.position));
+      const badTeam = ["Daemon", "Vampire", "Undead"];
+      const badPers = this.characterPositions.filter((el) =>
+        badTeam.includes(el.character.type),
+      );
+      const goodPers = this.characterPositions.filter(
+        (el) => !badTeam.includes(el.character.type),
+      );
+
+      this.targetPers = goodPers.reduce(function (acc, curr) {
+        return acc.character.attack > curr.character.attack ? acc : curr;
+      });
+
+      // выбор рандома
+      const randPers = badPers[Math.floor(Math.random() * badPers.length)];
+      const randPersAttacks = getPossibleAttacks(
+        randPers.character.type,
+        randPers.position,
+      );
+      let mvtsRandPers = getPossibleArea(
+        randPers.character.type,
+        randPers.position,
+      );
+      mvtsRandPers = mvtsRandPers.filter((el) => !arrPersPos.includes(el));
+      if (randPersAttacks.includes(this.targetPers.position)) {
+        this.attackLogic(randPers, this.targetPers);
+      } else {
+        const closestСell = mvtsRandPers.reduce((acc, curr) =>
+          Math.abs(acc - this.targetPers.position) <
+          Math.abs(curr - this.targetPers.position)
+            ? acc
+            : curr,
+        );
+        randPers.position = closestСell;
+      }
+
+      // рандомные движение рандома
+      // let mvtsRandPers = getPossibleArea(randPers.character.type, randPers.position);
+      // mvtsRandPers = mvtsRandPers.filter(el => !arrPersPos.includes(el));
+      // randPers.position = mvtsRandPers[Math.floor(Math.random() * (mvtsRandPers.length))];
+
+      this.gamePlay.redrawPositions(this.characterPositions);
+    });
+  }
+
   onCellClick(index) {
     let pers = this.getCharacter(index);
     const goodPers = ["Bowman", "Swordsman", "Magician"];
@@ -134,8 +163,15 @@ export default class GameController {
     // проверка атаки
     if (this.chrAtacks && this.chrAtacks.some((el) => el.position === index)) {
       this.attackLogic(this.getCharacter(this.currCell), pers);
+      // Запись
+      GameState.from({
+        positions: this.characterPositions,
+        theme: this.themesCount,
+      });
+
       this.clearSelections();
     }
+
     // проверка перехода персонажа
     if (this.CharacterAreaArr && this.CharacterAreaArr.includes(index)) {
       const char = this.getCharacter(this.currCell);
@@ -145,7 +181,16 @@ export default class GameController {
       }
       char ? (char.position = index) : 0;
       this.gamePlay.redrawPositions(this.characterPositions);
+      // Запись
+      GameState.from({
+        positions: this.characterPositions,
+        theme: this.themesCount,
+      });
+
       this.clearSelections();
+      this.turn().then((data) => {
+        console.log(data, "done");
+      });
     }
 
     // проверка выбора персонажа
@@ -207,6 +252,7 @@ export default class GameController {
         )
       ) {
         this.themesCount += 1;
+        this.levelUp();
         this.init();
       }
     }
@@ -215,7 +261,16 @@ export default class GameController {
     });
   }
 
-  levelUpLogic() {}
+  levelUp() {
+    const plrGen = generatePositions("team");
+    this.characterPositions.forEach((el) => {
+      el.position = plrGen.next().value;
+      (el.character.health + 80) / 100 > 1
+        ? (el.character.health = 100)
+        : (el.character.health += 80);
+      el.character.level += 1;
+    });
+  }
 
   onCellEnter(index) {
     const pers = this.getCharacter(index);
@@ -249,5 +304,24 @@ export default class GameController {
     this.gamePlay.setCursor("auto");
     const pers = this.characterPositions.find((el) => el.position === index);
     pers ? this.gamePlay.hideCellTooltip(index) : 0;
+  }
+
+  onNewGameClick() {
+    this.themesCount = 0;
+    this.characterPositions = [];
+    this.init();
+  }
+
+  onSaveGameClick() {
+    this.stateService.save(GameState.stateObject);
+  }
+
+  onLoadGameClick() {
+    const response = this.stateService.load();
+    this.themesCount = response.theme;
+    this.gamePlay.drawUi(Object.values(themes)[this.themesCount]);
+
+    this.characterPositions = response.positions;
+    this.gamePlay.redrawPositions(response.positions);
   }
 }
