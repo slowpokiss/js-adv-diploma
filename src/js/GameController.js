@@ -12,7 +12,8 @@ import { generateTeam } from "./generators";
 import { getPossibleArea } from "./utils";
 import { getPossibleAttacks } from "./utils";
 import { getAttackPower } from "./utils";
-import { generatePositions } from "./utils";
+import { generatePositions } from "./generators";
+import { closestCellTo } from "./utils";
 
 export default class GameController {
   constructor(gamePlay, stateService) {
@@ -26,23 +27,21 @@ export default class GameController {
     this.onSaveGameClick = this.onSaveGameClick.bind(this);
     this.onLoadGameClick = this.onLoadGameClick.bind(this);
     this.themesCount = 0;
+    this.goodPers = ["Bowman", "Swordsman", "Magician"];
+    this.badTeam = ["Daemon", "Vampire", "Undead"];
     this.characterPositions = [];
     this.addEvents();
   }
 
   init() {
-    this.CharacterAreaArr = [];
-    this.chrAtacks = [];
+    this.characterAreaArray = [];
+    this.characterAttacks = [];
     this.clearSelections();
+    let mapList = Object.values(themes);
     this.gamePlay.drawUi(
-      Object.values(themes)[this.themesCount % Object.keys(themes).length],
+      mapList[this.themesCount % Object.keys(themes).length],
     );
-    this.drawCharacters(
-      this.themesCount + 3,
-      this.themesCount + 3 > this.gamePlay.boardSize * 2
-        ? this.gamePlay.boardSize * 2
-        : this.themesCount + 3,
-    );
+    this.drawCharacters(this.themesCount + 1, this.themesCount + 2);
   }
 
   addEvents() {
@@ -55,21 +54,23 @@ export default class GameController {
   }
 
   drawCharacters(lvl, count) {
-    if (this.themesCount === 0) {
-      const playerTypes = [Bowman, Swordsman, Magician];
-      //const playerTypes = [Swordsman];
+    const playerTypes = [Bowman, Swordsman, Magician];
+    const playerTeam = generateTeam(
+      playerTypes,
+      1,
+      count - this.characterPositions.length,
+    );
+    const plrGen = generatePositions("team");
+    this.characterPositions.push(
+      ...playerTeam.teamFolder.map(
+        (el) => new PositionedCharacter(el, plrGen.next().value),
+      ),
+    );
 
-      const playerTeam = generateTeam(playerTypes, 5, 5);
-      const plrGen = generatePositions("team");
-      playerTeam.teamFolder.forEach((el) => {
-        this.characterPositions.push(
-          new PositionedCharacter(el, plrGen.next().value),
-        );
-      });
-    }
     const enemyTypes = [Vampire, Undead, Daemon];
     const enemyTeam = generateTeam(enemyTypes, lvl, count);
     const enemGen = generatePositions("enemy");
+
     enemyTeam.teamFolder.forEach((el) => {
       this.characterPositions.push(
         new PositionedCharacter(el, enemGen.next().value),
@@ -83,153 +84,178 @@ export default class GameController {
   }
 
   clearSelections() {
-    if (this.currCell) {
-      this.gamePlay.deselectCell(this.currCell);
+    if (this.currentCell) {
+      this.gamePlay.deselectCell(this.currentCell);
     }
     this.gamePlay.cells.forEach((el, ind) => this.gamePlay.deselectCell(ind));
     this.gamePlay.deAreaCell();
-    if (this.chrAtacks) {
-      this.chrAtacks.forEach((el) => this.gamePlay.deselectCell(el.position));
+    if (this.characterAttacks) {
+      this.characterAttacks.forEach((el) =>
+        this.gamePlay.deselectCell(el.position),
+      );
     }
-    this.currCell = undefined;
-    this.CharacterAreaArr = [];
-    this.chrAtacks = [];
+    this.currentCell = undefined;
+    this.characterAreaArray = [];
+    this.characterAttacks = [];
   }
 
-  turn() {
-    return new Promise((resolve) => {
-      // атакуют первого самого сильно персонажа
-
-      const arrPersPos = [];
-      this.characterPositions.forEach((el) => arrPersPos.push(el.position));
-      const badTeam = ["Daemon", "Vampire", "Undead"];
-      const badPers = this.characterPositions.filter((el) =>
-        badTeam.includes(el.character.type),
-      );
-      const goodPers = this.characterPositions.filter(
-        (el) => !badTeam.includes(el.character.type),
-      );
-
-      this.targetPers = goodPers.reduce(function (acc, curr) {
-        return acc.character.attack > curr.character.attack ? acc : curr;
-      });
-
-      // выбор рандома
-      const randPers = badPers[Math.floor(Math.random() * badPers.length)];
-      const randPersAttacks = getPossibleAttacks(
-        randPers.character.type,
-        randPers.position,
-      );
-      let mvtsRandPers = getPossibleArea(
-        randPers.character.type,
-        randPers.position,
-      );
-      mvtsRandPers = mvtsRandPers.filter((el) => !arrPersPos.includes(el));
-      if (randPersAttacks.includes(this.targetPers.position)) {
-        this.attackLogic(randPers, this.targetPers);
-      } else {
-        const closestСell = mvtsRandPers.reduce((acc, curr) =>
-          Math.abs(acc - this.targetPers.position) <
-          Math.abs(curr - this.targetPers.position)
-            ? acc
-            : curr,
-        );
-        randPers.position = closestСell;
-      }
-
-      // рандомные движение рандома
-      // let mvtsRandPers = getPossibleArea(randPers.character.type, randPers.position);
-      // mvtsRandPers = mvtsRandPers.filter(el => !arrPersPos.includes(el));
-      // randPers.position = mvtsRandPers[Math.floor(Math.random() * (mvtsRandPers.length))];
-
-      this.gamePlay.redrawPositions(this.characterPositions);
+  async turn(attacker, badAttacked) {
+    const arrPersPos = [];
+    this.characterPositions.forEach((el) => arrPersPos.push(el.position));
+    const badPers = this.characterPositions.filter((el) =>
+      this.badTeam.includes(el.character.type),
+    );
+    const goodPers = this.characterPositions.filter(
+      (el) => !this.badTeam.includes(el.character.type),
+    );
+    const targetPers = goodPers.reduce(function (acc, curr) {
+      return acc.character.attack > curr.character.attack ? acc : curr;
     });
+
+    // выбор силача
+    const powerfullPers = badPers[0];
+    const powerPersAttacks = getPossibleAttacks(
+      powerfullPers.character.type,
+      powerfullPers.position,
+    );
+    let movementsPowerPers = getPossibleArea(
+      powerfullPers.character.type,
+      powerfullPers.position,
+    );
+    movementsPowerPers = movementsPowerPers.filter(
+      (el) => !arrPersPos.includes(el),
+    );
+
+    // выбор пострадавшего
+    // if (badAttacked && badAttacked.character.health < 0) {
+    //   return
+    // }
+
+    if (badAttacked) {
+      const attackedPersAttacks = getPossibleAttacks(
+        badAttacked.character.type,
+        badAttacked.position,
+      );
+      let movementsAttackedPers = getPossibleArea(
+        badAttacked.character.type,
+        badAttacked.position,
+      );
+      movementsAttackedPers = movementsAttackedPers.filter(
+        (el) => !arrPersPos.includes(el),
+      );
+
+      if (attackedPersAttacks.includes(attacker.position)) {
+        await this.attackLogic(badAttacked, attacker);
+      } else {
+        badAttacked.position = closestCellTo(
+          movementsAttackedPers,
+          attacker.position,
+        );
+      }
+    } else {
+      if (!powerPersAttacks.includes(targetPers.position)) {
+        powerfullPers.position = closestCellTo(
+          movementsPowerPers,
+          targetPers.position,
+        );
+      } else {
+        await this.attackLogic(powerfullPers, targetPers);
+      }
+    }
   }
 
   onCellClick(index) {
     let pers = this.getCharacter(index);
-    const goodPers = ["Bowman", "Swordsman", "Magician"];
 
     // постороняя клетка
     if (
       !pers &&
-      !this.chrAtacks.includes(index) &&
-      !this.CharacterAreaArr.includes(index)
+      !this.characterAttacks.includes(index) &&
+      !this.characterAreaArray.includes(index)
     ) {
       this.clearSelections();
       return;
     }
-
+    const char = this.getCharacter(this.currentCell);
     // проверка атаки
-    if (this.chrAtacks && this.chrAtacks.some((el) => el.position === index)) {
-      this.attackLogic(this.getCharacter(this.currCell), pers);
-      // Запись
-      GameState.from({
-        positions: this.characterPositions,
-        theme: this.themesCount,
-      });
-
-      this.clearSelections();
+    if (
+      this.characterAttacks &&
+      this.characterAttacks.some((el) => el.position === index)
+    ) {
+      this.attackLogic(this.getCharacter(this.currentCell), pers).then(
+        (data) => {
+          if (data === "end") {
+            this.themesCount += 1;
+            this.levelUp();
+            this.init();
+            return;
+          }
+          this.turn(char, this.getCharacter(index)).then(() => {
+            GameState.from({
+              positions: this.characterPositions,
+              theme: this.themesCount,
+            });
+            this.gamePlay.redrawPositions(this.characterPositions);
+            this.clearSelections();
+            return;
+          });
+        },
+      );
     }
 
     // проверка перехода персонажа
-    if (this.CharacterAreaArr && this.CharacterAreaArr.includes(index)) {
-      const char = this.getCharacter(this.currCell);
-      if (pers && this.currCell) {
+    if (this.characterAreaArray && this.characterAreaArray.includes(index)) {
+      if (pers && this.currentCell) {
         this.clearSelections();
         return;
       }
-      char ? (char.position = index) : 0;
+      if (char) {
+        char.position = index;
+      }
       this.gamePlay.redrawPositions(this.characterPositions);
-      // Запись
       GameState.from({
         positions: this.characterPositions,
         theme: this.themesCount,
       });
 
       this.clearSelections();
-      this.turn().then((data) => {
-        console.log(data, "done");
+      this.turn().then(() => {
+        this.gamePlay.redrawPositions(this.characterPositions);
       });
     }
 
     // проверка выбора персонажа
     this.clearSelections();
-    if (pers && goodPers.includes(pers.character.type)) {
+    if (pers && this.goodPers.includes(pers.character.type)) {
       this.gamePlay.selectCell(index);
-      this.currCell = index;
+      this.currentCell = index;
       this.checkPossibleArea(pers.character.type, index);
     }
-
-    // if (pers && !goodPers.includes(pers.character.type)) {
-    //   GamePlay.showError("Это противник!");
-    // }
   }
 
   checkPossibleArea(pers, index) {
-    this.CharacterAreaArr = getPossibleArea(pers, index);
+    this.characterAreaArray = getPossibleArea(pers, index);
     const chrCells = [];
-    const goodPers = ["Bowman", "Swordsman", "Magician"];
     const chrRadius = getPossibleAttacks(pers, index);
-    this.chrAtacks = [];
+    this.characterAttacks = [];
 
     this.characterPositions.forEach((el) => {
       if (
-        !goodPers.includes(el.character.type) &&
+        !this.goodPers.includes(el.character.type) &&
         chrRadius.includes(el.position)
       ) {
         this.gamePlay.selectCell(el.position, "red");
-        this.chrAtacks.push(el);
+        this.characterAttacks.push(el);
       }
       chrCells.push(el.position);
     });
 
-    this.CharacterAreaArr = this.CharacterAreaArr.filter((el) => {
-      return !chrCells.includes(el);
-    });
+    this.characterAreaArray = this.characterAreaArray.filter(
+      (el) => !chrCells.includes(el),
+    );
 
-    this.drawPossibleArea(this.CharacterAreaArr);
-    return this.CharacterAreaArr;
+    this.drawPossibleArea(this.characterAreaArray);
+    return this.characterAreaArray;
   }
 
   drawPossibleArea(arr) {
@@ -238,36 +264,50 @@ export default class GameController {
     });
   }
 
-  attackLogic(pers, enemy) {
-    const goodPers = ["Bowman", "Swordsman", "Magician"];
-    const damage = getAttackPower(pers.character, enemy.character);
-    enemy.character.health = enemy.character.health - damage;
-    if (enemy.character.health <= 0) {
-      this.characterPositions = this.characterPositions.filter(
-        (el) => el !== enemy,
-      );
+  async attackLogic(pers, enemy) {
+    return new Promise((resolve) => {
+      const damage = getAttackPower(pers.character, enemy.character);
+      enemy.character.health = enemy.character.health - damage;
+      if (enemy.character.health <= 0) {
+        this.characterPositions = this.characterPositions.filter(
+          (el) => el !== enemy,
+        );
+      }
       if (
         !this.characterPositions.some(
-          (el) => !goodPers.includes(el.character.type),
+          (el) => !this.goodPers.includes(el.character.type),
         )
       ) {
-        this.themesCount += 1;
-        this.levelUp();
-        this.init();
+        this.gamePlay.showDamage(enemy.position, damage).then((data) => {
+          resolve("end");
+        });
       }
-    }
-    this.gamePlay.showDamage(enemy.position, damage).then((data) => {
-      this.gamePlay.redrawPositions(this.characterPositions);
+
+      this.gamePlay.showDamage(enemy.position, damage).then((data) => {
+        this.gamePlay.redrawPositions(this.characterPositions);
+        resolve();
+      });
     });
   }
 
   levelUp() {
     const plrGen = generatePositions("team");
+
     this.characterPositions.forEach((el) => {
       el.position = plrGen.next().value;
-      (el.character.health + 80) / 100 > 1
-        ? (el.character.health = 100)
-        : (el.character.health += 80);
+      el.character.attack = Math.max(
+        el.character.attack,
+        (el.character.attack * (80 + el.character.health)) / 100,
+      ).toFixed(2);
+      el.character.defence = Math.max(
+        el.character.defence,
+        (el.character.defence * (80 + el.character.health)) / 100,
+      ).toFixed(2);
+      if ((el.character.health + 80) / 100 > 1) {
+        el.character.health = 100;
+      } else {
+        el.character.health += 80;
+      }
       el.character.level += 1;
     });
   }
@@ -284,15 +324,15 @@ export default class GameController {
       );
     }
 
-    const cell = [...this.gamePlay.cells.at(index).children][0];
+    const cell = [...this.gamePlay.cells[index].children][0];
     if (cell) {
-      cell.classList[0] === "selected-cell"
-        ? this.gamePlay.setCursor("pointer")
-        : 0;
+      if (cell.classList[0] === "selected-cell") {
+        this.gamePlay.setCursor("pointer");
+      }
     }
 
-    if (this.chrAtacks) {
-      this.chrAtacks.forEach((el) => {
+    if (this.characterAttacks) {
+      this.characterAttacks.forEach((el) => {
         if (el.position === index) {
           this.gamePlay.setCursor("pointer");
         }
@@ -302,8 +342,10 @@ export default class GameController {
 
   onCellLeave(index) {
     this.gamePlay.setCursor("auto");
-    const pers = this.characterPositions.find((el) => el.position === index);
-    pers ? this.gamePlay.hideCellTooltip(index) : 0;
+    const pers = this.getCharacter(index);
+    if (pers) {
+      this.gamePlay.hideCellTooltip(index);
+    }
   }
 
   onNewGameClick() {
@@ -318,10 +360,11 @@ export default class GameController {
 
   onLoadGameClick() {
     const response = this.stateService.load();
-    this.themesCount = response.theme;
-    this.gamePlay.drawUi(Object.values(themes)[this.themesCount]);
-
-    this.characterPositions = response.positions;
-    this.gamePlay.redrawPositions(response.positions);
+    if (response !== undefined) {
+      this.themesCount = response.theme;
+      this.gamePlay.drawUi(Object.values(themes)[this.themesCount]);
+      this.characterPositions = response.positions;
+      this.gamePlay.redrawPositions(response.positions);
+    }
   }
 }

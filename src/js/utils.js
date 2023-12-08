@@ -20,51 +20,44 @@ export function calcTileType(index, boardSize) {
 }
 
 export function getPossibleArea(characterType, index) {
-  const goodPers = ["Bowman", "Swordsman", "Magician"];
-  const badPers = ["Daemon", "Vampire", "Undead"];
-  let ni;
+  let masAreas = [];
+  let characterAreaIndex;
   const boardSize = 8;
   if (characterType === "Magician" || characterType === "Daemon") {
-    ni = 1;
+    characterAreaIndex = 1;
   }
   if (characterType === "Bowman" || characterType === "Vampire") {
-    ni = 2;
+    characterAreaIndex = 2;
   }
   if (characterType === "Swordsman" || characterType === "Undead") {
-    ni = 4;
+    characterAreaIndex = 4;
   }
 
-  let oneCellArea = [
-    index - boardSize - 1,
-    index - 1,
-    index + boardSize - 1,
-    index - boardSize,
-    index + boardSize,
-    index - boardSize + 1,
-    index + 1,
-    index + boardSize + 1,
-  ];
-
-  for (let n = 2; n <= ni; n++) {
-    let twoCellArea = [
-      index - n * boardSize - n,
-      index + n * boardSize - n,
-      index - n * boardSize + n,
-      index + n * boardSize + n,
-    ];
-    oneCellArea.push(...twoCellArea);
+  const startCell = index - characterAreaIndex * boardSize - characterAreaIndex;
+  for (let j = startCell; j < startCell + 2 * characterAreaIndex + 1; j++) {
+    for (
+      let i = j;
+      i < j + (2 * characterAreaIndex + 1) * boardSize;
+      i += boardSize
+    ) {
+      masAreas.push(i);
+    }
   }
 
-  oneCellArea = oneCellArea.filter((el) => {
+  masAreas = masAreas.filter((elem) => {
     return (
-      getVector(el, index) !== undefined &&
-      getVector(el, index) < ni + 1 &&
-      el >= 0 &&
-      el <= 63
+      getVector(elem, index) !== undefined &&
+      elem >= 0 &&
+      elem <= 63 &&
+      elem !== index &&
+      getRadius(elem, index) < characterAreaIndex + 1
     );
   });
 
-  return oneCellArea;
+  masAreas = masAreas.filter(
+    (value, index, self) => self.indexOf(value) === index,
+  );
+  return masAreas;
 }
 
 function getVector(cell, index) {
@@ -100,20 +93,25 @@ function getVector(cell, index) {
 }
 
 export function getPossibleAttacks(character, index) {
-  let n = 1;
+  let characterAttackIndex = 1;
   const boardSize = 8;
   let masAttacks = [];
 
   if (character === "Bowman" || character === "Vampire") {
-    n = 2;
+    characterAttackIndex = 2;
   }
   if (character === "Magician" || character === "Daemon") {
-    n = 4;
+    characterAttackIndex = 4;
   }
 
-  const startCell = index - n * boardSize - n;
-  for (let j = startCell; j < startCell + 2 * n + 1; j++) {
-    for (let i = j; i < j + (2 * n + 1) * boardSize; i += boardSize) {
+  const startCell =
+    index - characterAttackIndex * boardSize - characterAttackIndex;
+  for (let j = startCell; j < startCell + 2 * characterAttackIndex + 1; j++) {
+    for (
+      let i = j;
+      i < j + (2 * characterAttackIndex + 1) * boardSize;
+      i += boardSize
+    ) {
       masAttacks.push(i);
     }
   }
@@ -123,7 +121,7 @@ export function getPossibleAttacks(character, index) {
       elem >= 0 &&
       elem <= 63 &&
       elem !== index &&
-      getRadius(elem, index) < n + 1
+      getRadius(elem, index) < characterAttackIndex + 1
     );
   });
 
@@ -173,37 +171,23 @@ export function getAttackPower(attacker, target) {
   return Math.max(attacker.attack - target.defence, attacker.attack * 0.1);
 }
 
-export function* generatePositions(type) {
-  let col1, col2;
+export function closestCellTo(arr, targetPosition) {
+  // самый близкий остаток от деление
+  const targetOst = targetPosition % 8;
+  const minDif =
+    arr.reduce((acc, curr) => {
+      const currDif = Math.abs(targetOst - (curr % 8));
+      return currDif < Math.abs(targetOst - (acc % 8)) ? curr : acc;
+    }) % 8;
 
-  if (type === "team") {
-    col1 = 0;
-    col2 = 1;
-  }
-  if (type === "enemy") {
-    col1 = 6;
-    col2 = 7;
-  }
+  //список близких клеток
+  const closestCells = arr.filter((el) => el % 8 === minDif);
 
-  const randSet = new Set();
-  while (true) {
-    const randomColumn = Math.floor(Math.random() * 2);
-    let randN;
-
-    if (randomColumn % 2 === 0) {
-      randN = Math.floor(Math.random() * 7) * 8 + col1;
-    } else {
-      randN = Math.floor(Math.random() * 7) * 8 + col2;
-    }
-
-    while (randSet.has(randN)) {
-      if (randomColumn % 2 === 0) {
-        randN = Math.floor(Math.random() * 7) * 8 + col1;
-      } else {
-        randN = Math.floor(Math.random() * 7) * 8 + col2;
-      }
-    }
-    randSet.add(randN);
-    yield randN;
-  }
+  // самая близкая клетка / лучший ход
+  const finaleCell = closestCells.reduce((acc, curr) => {
+    return Math.abs(targetPosition - curr) < Math.abs(targetPosition - acc)
+      ? curr
+      : acc;
+  });
+  return finaleCell;
 }
