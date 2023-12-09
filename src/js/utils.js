@@ -168,7 +168,7 @@ function getRadius(cell, index) {
 }
 
 export function getAttackPower(attacker, target) {
-  return Math.max(attacker.attack - target.defence, attacker.attack * 0.1);
+  return Math.max(attacker.attack - target.defence, attacker.attack * 0.1).toFixed(2);
 }
 
 export function closestCellTo(arr, targetPosition) {

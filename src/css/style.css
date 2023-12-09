@@ -211,10 +211,6 @@ body {
   background: url('../img/characters/vampire.png');
 }
 
-.character.Zombie {
-  background: url('../img/characters/zombie.png');
-}
-
 .health-level {
   top: 2px;
   left: 7px;

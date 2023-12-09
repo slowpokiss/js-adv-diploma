@@ -126,11 +126,6 @@ export default class GameController {
       (el) => !arrPersPos.includes(el),
     );
 
-    // выбор пострадавшего
-    // if (badAttacked && badAttacked.character.health < 0) {
-    //   return
-    // }
-
     if (badAttacked) {
       const attackedPersAttacks = getPossibleAttacks(
         badAttacked.character.type,
@@ -191,10 +186,6 @@ export default class GameController {
             return;
           }
           this.turn(char, this.getCharacter(index)).then(() => {
-            GameState.from({
-              positions: this.characterPositions,
-              theme: this.themesCount,
-            });
             this.gamePlay.redrawPositions(this.characterPositions);
             this.clearSelections();
             return;
@@ -212,12 +203,8 @@ export default class GameController {
       if (char) {
         char.position = index;
       }
+      
       this.gamePlay.redrawPositions(this.characterPositions);
-      GameState.from({
-        positions: this.characterPositions,
-        theme: this.themesCount,
-      });
-
       this.clearSelections();
       this.turn().then(() => {
         this.gamePlay.redrawPositions(this.characterPositions);
@@ -355,6 +342,11 @@ export default class GameController {
   }
 
   onSaveGameClick() {
+    GameState.from({
+      positions: this.characterPositions,
+      theme: this.themesCount,
+    });
+
     this.stateService.save(GameState.stateObject);
   }
 
