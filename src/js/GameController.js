@@ -203,7 +203,7 @@ export default class GameController {
       if (char) {
         char.position = index;
       }
-      
+
       this.gamePlay.redrawPositions(this.characterPositions);
       this.clearSelections();
       this.turn().then(() => {

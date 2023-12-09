@@ -6,7 +6,10 @@ test.each([
   [
     "Swordsman",
     27,
-    [31, 0, 24, 48, 9, 25, 41, 18, 26, 34, 3, 11, 19, 35, 43, 51, 59, 20, 28, 36, 13, 29, 45, 6, 30, 54, 63]
+    [
+      31, 0, 24, 48, 9, 25, 41, 18, 26, 34, 3, 11, 19, 35, 43, 51, 59, 20, 28,
+      36, 13, 29, 45, 6, 30, 54, 63,
+    ],
   ],
 ])("calculating area for %s index - %i", (characterType, index, expected) => {
   expect(getPossibleArea(characterType, index)).toEqual(expected);
