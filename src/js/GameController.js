@@ -61,10 +61,19 @@ export default class GameController {
       count - this.characterPositions.length,
     );
     const plrGen = generatePositions("team");
+
+    const chrPositionsArray = [];
+    this.characterPositions.forEach((el) =>
+      chrPositionsArray.push(el.position),
+    );
     this.characterPositions.push(
-      ...playerTeam.teamFolder.map(
-        (el) => new PositionedCharacter(el, plrGen.next().value),
-      ),
+      ...playerTeam.teamFolder.map((el) => {
+        let chrPosition = plrGen.next().value;
+        while (chrPositionsArray.includes(chrPosition)) {
+          chrPosition = plrGen.next().value;
+        }
+        return new PositionedCharacter(el, chrPosition);
+      }),
     );
 
     const enemyTypes = [Vampire, Undead, Daemon];

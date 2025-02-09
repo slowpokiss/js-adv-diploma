@@ -181,6 +181,7 @@ body {
   height: var(--cell-size);
   position: absolute;
   z-index: 99;
+
 }
 
 .character.Generic {
@@ -189,27 +190,46 @@ body {
 
 .character.Bowman {
   background: url('../img/characters/bowman.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
 
 .character.Daemon {
   background: url('../img/characters/daemon.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
 
 .character.Magician {
   background: url('../img/characters/magician.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
 
 .character.Swordsman {
   background: url('../img/characters/swordsman.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
 
 .character.Undead {
   background: url('../img/characters/undead.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
 
 .character.Vampire {
   background: url('../img/characters/vampire.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 50px;
 }
+
 
 .health-level {
   top: 2px;
