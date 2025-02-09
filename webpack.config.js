@@ -1,10 +1,13 @@
-
 const path = require('node:path');
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 
 module.exports = {
+  mode: 'production',
+  entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
+    filename: 'bundle.js',
+    publicPath: './',
   },
   module: {
     rules: [
@@ -34,13 +37,13 @@ module.exports = {
       {
         test: /\.(woff|woff2|eot|ttf|otf)$/i,
         type: 'asset/resource',
-      }
+      },
     ],
   },
   plugins: [
     new HtmlWebPackPlugin({
       template: './src/index.html',
       filename: './index.html',
-    })
+    }),
   ],
 };
